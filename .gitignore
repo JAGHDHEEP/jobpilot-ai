@@ -1,0 +1,30 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node / Next
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Env & data
+.env
+.env.local
+data/
+*.sqlite
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Claude Code local settings
+.claude/
