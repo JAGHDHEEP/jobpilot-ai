@@ -1,0 +1,73 @@
+# Render Blueprint for JobPilot AI
+# Docs: https://render.com/docs/blueprint-spec
+#
+# This provisions: Postgres + Redis (Key Value) + the FastAPI backend + the Next.js
+# frontend. Celery worker/beat are intentionally omitted (Render background workers are
+# paid) — every feature is still usable via on-demand API endpoints (/jobs/ingest,
+# /jobs/{id}/match, /jobs/recommendations/build). ChromaDB is not deployed; the app
+# automatically falls back to its in-memory vector index (fine for a demo; not persistent).
+#
+# After the first deploy you must set TWO cross-service URLs (marked `sync: false`):
+#   - jobpilot-api  -> BACKEND_CORS_ORIGINS = ["https://<your-web-url>"]
+#   - jobpilot-web  -> NEXT_PUBLIC_API_URL  = https://<your-api-url>/api/v1
+# See docs/DEPLOY_RENDER.md for the exact steps.
+
+databases:
+  - name: jobpilot-db
+    plan: free
+    databaseName: jobpilot
+    user: jobpilot
+
+services:
+  # ---- Redis (Render "Key Value") ----
+  - type: redis
+    name: jobpilot-redis
+    plan: free
+    ipAllowList: []          # internal-only
+    maxmemoryPolicy: allkeys-lru
+
+  # ---- Backend API (FastAPI, Docker) ----
+  - type: web
+    name: jobpilot-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENV
+        value: prod
+      - key: DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        generateValue: true                # Render generates a strong secret
+      - key: DATABASE_URL
+        fromDatabase:
+          name: jobpilot-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: jobpilot-redis
+          type: redis
+          property: connectionString
+      - key: AI_PROVIDER
+        value: mock                         # change to "anthropic"/"openai" + add a key
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: BACKEND_CORS_ORIGINS
+        sync: false                         # set to ["https://<web-url>"] after deploy
+
+  # ---- Frontend (Next.js, Docker) ----
+  - type: web
+    name: jobpilot-web
+    runtime: docker
+    rootDir: frontend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        sync: false                         # set to https://<api-url>/api/v1 after deploy

@@ -52,6 +52,14 @@ jobpilot-ai/
 └── .github/workflows/      # CI/CD
 ```
 
+## Deploy to the web (Render — free tier)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/JAGHDHEEP/jobpilot-ai)
+
+One blueprint provisions Postgres + Redis + the API + the frontend. Follow the click-by-click
+steps in **[docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md)** (you connect your GitHub/Render
+account and paste back two service URLs — everything else is in [`render.yaml`](render.yaml)).
+
 ## Quick start (Docker)
 
 ```bash

@@ -71,7 +71,7 @@ class Settings(BaseSettings):
     @property
     def sqlalchemy_url(self) -> str:
         if self.DATABASE_URL:
-            return self.DATABASE_URL
+            return _normalize_db_url(self.DATABASE_URL)
         return str(
             PostgresDsn.build(
                 scheme="postgresql+asyncpg",
@@ -92,6 +92,27 @@ class Settings(BaseSettings):
     @property
     def celery_backend(self) -> str:
         return self.CELERY_RESULT_BACKEND or self.REDIS_URL
+
+
+def _normalize_db_url(url: str) -> str:
+    """Make managed-Postgres URLs (Render/Heroku/etc.) work with the asyncpg driver.
+
+    - ``postgres://`` / ``postgresql://`` -> ``postgresql+asyncpg://``
+    - drop libpq-style ``sslmode``/``channel_binding`` query params that asyncpg rejects
+      (internal Render connections don't need SSL; external can set ``DATABASE_SSL``).
+    - leave sqlite / already-async URLs untouched.
+    """
+    if url.startswith("postgres://"):
+        url = "postgresql+asyncpg://" + url[len("postgres://"):]
+    elif url.startswith("postgresql://"):
+        url = "postgresql+asyncpg://" + url[len("postgresql://"):]
+
+    if "+asyncpg" in url and "?" in url:
+        base, _, query = url.partition("?")
+        kept = [p for p in query.split("&")
+                if p and not p.lower().startswith(("sslmode=", "channel_binding="))]
+        url = base + (("?" + "&".join(kept)) if kept else "")
+    return url
 
 
 @lru_cache
