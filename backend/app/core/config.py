@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "JobPilot AI"
     API_V1_PREFIX: str = "/api/v1"
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    CORS_ALLOW_ALL: bool = False     # demo: accept any origin (Bearer-token auth, no cookies)
+    AUTO_SEED: bool = False          # on startup, create tables + seed admin/demo jobs if empty
 
     # ---- Security
     SECRET_KEY: str = "change-me-in-prod-please-32-bytes-min"

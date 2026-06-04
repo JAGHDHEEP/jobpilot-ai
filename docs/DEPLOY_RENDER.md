@@ -27,29 +27,20 @@ When the services go live you'll get URLs like:
 
 (Your exact subdomains may have a random suffix — copy the real ones from the dashboard.)
 
-## 4. Wire the two services together (one-time)
-Render couldn't know the URLs until they existed, so set them now:
-
-**a) Backend CORS** — open **jobpilot-api → Environment** → set:
-```
-BACKEND_CORS_ORIGINS = ["https://jobpilot-web.onrender.com"]
-```
-(use your real web URL; it must be a JSON array). Save → it redeploys.
-
-**b) Frontend API URL** — open **jobpilot-web → Environment** → set:
+## 4. Tell the frontend where the API lives (the ONE manual env var)
+The backend now auto-allows any origin (`CORS_ALLOW_ALL=true`) and auto-seeds itself, so
+the only thing left is pointing the frontend at the API. Open
+**jobpilot-web → Environment** → set:
 ```
 NEXT_PUBLIC_API_URL = https://jobpilot-api.onrender.com/api/v1
 ```
-(use your real api URL). Save → **Manual Deploy → Clear build cache & deploy** (this var
-is baked in at build time, so the frontend must rebuild once).
+(use your real api URL). Save → **Manual Deploy → Clear build cache & deploy** — this value
+is baked in at build time, so the frontend must rebuild once.
 
-## 5. Seed the database (first run)
-The API container runs `alembic upgrade head` automatically on boot, which creates all
-tables. To also create the demo admin + sample jobs, open **jobpilot-api → Shell** and run:
-```
-python -m app.db.init_db
-```
-This seeds `admin@jobpilot.ai` / `admin12345` and demo jobs.
+## 5. Seeding — automatic ✅
+Nothing to do. On first boot the API creates all tables and seeds the demo admin
+(`admin@jobpilot.ai` / `admin12345`) plus sample jobs automatically (`AUTO_SEED=true`).
+To disable later, set `AUTO_SEED=false` on jobpilot-api.
 
 ## 6. Use it
 Open the web URL → register or log in with the seeded admin → upload a resume on Profile →

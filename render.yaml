@@ -57,8 +57,10 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
-      - key: BACKEND_CORS_ORIGINS
-        sync: false                         # set to ["https://<web-url>"] after deploy
+      - key: CORS_ALLOW_ALL
+        value: "true"                       # demo: accept any frontend origin automatically
+      - key: AUTO_SEED
+        value: "true"                       # seed admin + demo jobs on first boot
 
   # ---- Frontend (Next.js, Docker) ----
   - type: web

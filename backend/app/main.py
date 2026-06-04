@@ -20,6 +20,14 @@ log = get_logger()
 async def lifespan(app: FastAPI):
     log.info("startup", env=settings.ENV, ai_provider=settings.AI_PROVIDER)
     import app.connectors  # noqa: F401  ensure connectors are registered
+    if settings.AUTO_SEED:
+        try:
+            from app.db.init_db import create_all, seed
+            await create_all()      # idempotent; safe alongside Alembic
+            await seed()            # creates admin + demo jobs only if missing
+            log.info("auto_seed_done")
+        except Exception as exc:  # never let seeding crash the app
+            log.warning("auto_seed_failed", error=str(exc))
     yield
     log.info("shutdown")
 
@@ -35,13 +43,23 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.BACKEND_CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    if settings.CORS_ALLOW_ALL or "*" in settings.BACKEND_CORS_ORIGINS:
+        # Wildcard origin requires credentials disabled (we use Bearer tokens, not cookies).
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origin_regex=".*",
+            allow_credentials=False,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    else:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.BACKEND_CORS_ORIGINS,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
     app.add_middleware(RateLimitMiddleware)
     register_exception_handlers(app)
 
