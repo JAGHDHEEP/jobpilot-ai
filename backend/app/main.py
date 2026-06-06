@@ -20,13 +20,18 @@ log = get_logger()
 async def lifespan(app: FastAPI):
     log.info("startup", env=settings.ENV, ai_provider=settings.AI_PROVIDER)
     import app.connectors  # noqa: F401  ensure connectors are registered
+    # Self-healing schema: create missing tables/columns/enum values (no Alembic at boot).
+    try:
+        from app.db.ensure_schema import ensure_schema
+        await ensure_schema()
+    except Exception as exc:  # never let schema setup crash the app
+        log.error("ensure_schema_failed", error=str(exc))
     if settings.AUTO_SEED:
         try:
-            from app.db.init_db import create_all, seed
-            await create_all()      # idempotent; safe alongside Alembic
-            await seed()            # creates admin + demo jobs only if missing
+            from app.db.init_db import seed
+            await seed()            # creates admin + jobs only if missing
             log.info("auto_seed_done")
-        except Exception as exc:  # never let seeding crash the app
+        except Exception as exc:
             log.warning("auto_seed_failed", error=str(exc))
     yield
     log.info("shutdown")
