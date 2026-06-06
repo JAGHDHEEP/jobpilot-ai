@@ -17,6 +17,7 @@ COPY pyproject.toml ./
 RUN pip install --upgrade pip && pip install ".[dev]"
 
 COPY . .
+RUN chmod +x /app/entrypoint.sh
 
 # Non-root user
 RUN useradd -m appuser && mkdir -p /data/uploads /data/chroma && chown -R appuser /data /app
@@ -26,4 +27,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --retries=5 \
     CMD curl -fsS http://localhost:8000/health || exit 1
 
+# entrypoint runs `alembic upgrade head` (applies migrations to the live DB) then execs CMD
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

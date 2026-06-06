@@ -30,10 +30,12 @@ _SKILLS_POOL = [
 
 
 class SampleConnector(JobConnector):
-    """Deterministic-ish demo source for development and tests."""
+    """Deterministic-ish demo source. Disabled in favor of real connectors; kept for
+    offline/dev use and tests."""
 
     source = JobSource.manual
     mechanism = "api"
+    enabled = False
 
     async def fetch(self, *, query="", location="Remote", limit=20) -> list[JobCreate]:
         rng = random.Random(42)
@@ -105,14 +107,19 @@ class GlassdoorConnector(_CredentialedAPIConnector):
 
 
 def register_all() -> None:
+    # Real, key-less sources (return live jobs):
+    from app.connectors.freeapis import ArbeitnowConnector, RemotiveConnector
+    register(RemotiveConnector())
+    register(ArbeitnowConnector())
+    # Offline/demo source (disabled by default):
     register(SampleConnector())
+    # Credentialed stubs (enable when partner API keys are configured):
     register(LinkedInConnector())
     register(IndeedConnector())
     register(NaukriConnector())
     register(FounditConnector())
     register(WellfoundConnector())
     register(GlassdoorConnector())
-    # Example: a company career page exposed via RSS
     register(RSSConnector(source=JobSource.company))
 
 

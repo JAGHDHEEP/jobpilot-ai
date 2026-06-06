@@ -26,8 +26,17 @@ class JobSource(str, enum.Enum):
     foundit = "foundit"
     wellfound = "wellfound"
     glassdoor = "glassdoor"
+    remotive = "remotive"
+    arbeitnow = "arbeitnow"
     company = "company"
     manual = "manual"
+
+
+class WorkMode(str, enum.Enum):
+    any = "any"
+    remote = "remote"
+    hybrid = "hybrid"
+    onsite = "onsite"
 
 
 class EmploymentType(str, enum.Enum):

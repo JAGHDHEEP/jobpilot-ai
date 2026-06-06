@@ -26,6 +26,20 @@ class Profile(UUIDMixin, TimestampMixin, Base):
     summary: Mapped[str | None] = mapped_column(Text)
     languages: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
 
+    # Professional info (what recruiters ask for)
+    current_role: Mapped[str | None] = mapped_column(String(200))
+    years_experience: Mapped[float | None] = mapped_column(Numeric(4, 1))
+    current_ctc: Mapped[str | None] = mapped_column(String(60))
+    expected_ctc: Mapped[str | None] = mapped_column(String(60))
+    notice_period: Mapped[str | None] = mapped_column(String(60))
+
+    # Job preferences (drive search + ranking)
+    work_mode: Mapped[str | None] = mapped_column(String(20))          # any|remote|hybrid|onsite
+    preferred_locations: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    preferred_titles: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    salary_min: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    salary_max: Mapped[float | None] = mapped_column(Numeric(12, 2))
+
     user = relationship("User", back_populates="profile")
     educations: Mapped[list["Education"]] = relationship(
         back_populates="profile", cascade="all, delete-orphan")

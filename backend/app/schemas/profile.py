@@ -105,6 +105,18 @@ class ProfileUpdate(BaseModel):
     headline: str | None = None
     summary: str | None = None
     languages: list[Language] | None = None
+    # Professional
+    current_role: str | None = None
+    years_experience: float | None = Field(None, ge=0)
+    current_ctc: str | None = None
+    expected_ctc: str | None = None
+    notice_period: str | None = None
+    # Preferences
+    work_mode: str | None = None
+    preferred_locations: list[str] | None = None
+    preferred_titles: list[str] | None = None
+    salary_min: float | None = None
+    salary_max: float | None = None
 
 
 class ProfileOut(ORMModel):
@@ -117,6 +129,16 @@ class ProfileOut(ORMModel):
     headline: str | None = None
     summary: str | None = None
     languages: list[Language] = Field(default_factory=list)
+    current_role: str | None = None
+    years_experience: float | None = None
+    current_ctc: str | None = None
+    expected_ctc: str | None = None
+    notice_period: str | None = None
+    work_mode: str | None = None
+    preferred_locations: list[str] = Field(default_factory=list)
+    preferred_titles: list[str] = Field(default_factory=list)
+    salary_min: float | None = None
+    salary_max: float | None = None
     educations: list[EducationOut] = Field(default_factory=list)
     experiences: list[ExperienceOut] = Field(default_factory=list)
     projects: list[ProjectOut] = Field(default_factory=list)

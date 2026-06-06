@@ -36,6 +36,15 @@ export default function DashboardPage() {
         </button>
       </div>
 
+      {recs && recs.length > 0 && (() => {
+        const strong = recs.filter((r) => (r.match?.overall_score ?? 0) >= 85).length;
+        return (
+          <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-700 dark:border-brand-700/40 dark:bg-brand-700/10 dark:text-brand-200">
+            🎯 <b>{strong}</b> job{strong === 1 ? "" : "s"} above 85% match today · {recs.length} total recommendations
+          </div>
+        );
+      })()}
+
       {analytics && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Stat label="Applications" value={analytics.total} />

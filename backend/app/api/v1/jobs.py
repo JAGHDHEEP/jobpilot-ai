@@ -47,15 +47,36 @@ async def create_job(body: JobCreate, user: CurrentUser, db: DBSession) -> JobOu
 
 @router.post("/ingest", response_model=Message)
 async def ingest(user: CurrentUser, db: DBSession,
-                 q: str = "", location: str = "", limit: int = 20) -> Message:
-    """Run enabled connectors on demand (also runs on a Celery schedule)."""
+                 q: str = "", location: str = "", limit: int = 30) -> Message:
+    """Aggregate real jobs from enabled connectors on demand.
+
+    With no explicit query, searches are driven by the user's preferred job titles
+    (and top skills) so results are personalized — the core of the workflow.
+    """
+    from app.services import profile_service
+
+    queries: list[str] = [q] if q else []
+    if not queries:
+        profile = await profile_service.get_profile(db, str(user.id))
+        queries = list(profile.preferred_titles or [])
+        if not queries and profile.skills:
+            queries = [s.name for s in profile.skills[:3]]
+        if not queries:
+            queries = [""]  # fall back to latest jobs
+
+    loc = location or ""
     count = 0
+    seen_sources = set()
     for connector in enabled_connectors():
-        for item in await connector.fetch(query=q, location=location, limit=limit):
-            await job_service.upsert_job(db, item)
-            count += 1
+        seen_sources.add(connector.source.value)
+        for query in queries[:5]:
+            for item in await connector.fetch(query=query, location=loc, limit=limit):
+                await job_service.upsert_job(db, item)
+                count += 1
     await db.commit()
-    return Message(message=f"Ingested {count} jobs from {len(enabled_connectors())} sources.")
+    return Message(
+        message=f"Ingested {count} jobs from {len(seen_sources)} live sources "
+                f"({', '.join(sorted(seen_sources))}).")
 
 
 @router.get("/{job_id}", response_model=JobOut)
@@ -87,6 +108,30 @@ async def top_matches(user: CurrentUser, db: DBSession,
                      job=JobOut.model_validate(j, from_attributes=True))
         for m, j in rows
     ]
+
+
+@router.post("/{job_id}/apply", response_model=dict)
+async def apply(job_id: str, user: CurrentUser, db: DBSession) -> dict:
+    """One-click apply: record the application as 'applied' and return the external
+    apply URL for the client to open. We never auto-submit the resume to third parties."""
+    from app.models.enums import ApplicationStatus
+    from app.services import application_service
+    job = await job_service.get_job(db, job_id)
+    try:
+        await application_service.create_application(
+            db, str(user.id), job_id, ApplicationStatus.applied)
+    except Exception:
+        await db.rollback()
+        # already tracked → move it to applied
+        from sqlalchemy import select
+        from app.models.application import Application
+        existing = (await db.execute(select(Application).where(
+            Application.user_id == user.id, Application.job_id == job_id))).scalar_one_or_none()
+        if existing:
+            await application_service.update_status(
+                db, str(user.id), str(existing.id), ApplicationStatus.applied)
+    await db.commit()
+    return {"apply_url": job.apply_url, "status": "applied"}
 
 
 @router.post("/recommendations/build", response_model=Message)
