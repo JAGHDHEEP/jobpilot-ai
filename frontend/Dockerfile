@@ -21,4 +21,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
 EXPOSE 3000
-CMD ["node", "server.js"]
+# Bind to all interfaces so Render's router can reach the app (fixes 502).
+# Render injects PORT at runtime; force HOSTNAME=0.0.0.0 at process launch
+# (overrides the pod-hostname HOSTNAME that Render otherwise sets).
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 node server.js"]
