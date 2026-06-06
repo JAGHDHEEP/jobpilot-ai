@@ -78,7 +78,8 @@ services:
   frontend:
     build: ./frontend
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+      # Browser calls same-origin /api/v1; the Next route handler proxies to this:
+      BACKEND_URL: http://api:8000
     depends_on: [api]
     ports: ["3000:3000"]
 

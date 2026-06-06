@@ -1,5 +1,8 @@
 // Typed API client with automatic token refresh.
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+// Always call the backend through THIS app's own origin (/api/v1). A Next.js route
+// handler (src/app/api/v1/[...path]/route.ts) proxies these to the real backend at
+// runtime — so there is no cross-origin URL to configure, and no CORS.
+const API_URL = "/api/v1";
 
 export interface Tokens { access_token: string; refresh_token: string }
 

@@ -71,5 +71,10 @@ services:
     plan: free
     autoDeploy: true
     envVars:
-      - key: NEXT_PUBLIC_API_URL
-        sync: false                         # set to https://<api-url>/api/v1 after deploy
+      # Render injects the real API host automatically (no manual URL needed).
+      # The Next.js /api/v1 route handler proxies browser calls to this backend.
+      - key: BACKEND_URL
+        fromService:
+          type: web
+          name: jobpilot-api
+          property: host
