@@ -10,8 +10,13 @@ export const runtime = "nodejs";
 const DEFAULT_BACKEND = "https://jobpilot-api-gpc1.onrender.com";
 
 function backendBase(): string {
-  const b = process.env.BACKEND_URL || process.env.BACKEND_HOST || DEFAULT_BACKEND;
-  return b.startsWith("http") ? b.replace(/\/+$/, "") : `https://${b}`;
+  // Only honor BACKEND_URL if it's a FULL http(s) URL (e.g. http://api:8000 locally).
+  // Render's service-linking sets it to a bare hostname like "jobpilot-api-gpc1"
+  // (no domain) which is NOT publicly resolvable — so we ignore that and use the
+  // full public URL instead.
+  const env = (process.env.BACKEND_URL || "").trim();
+  if (/^https?:\/\//.test(env)) return env.replace(/\/+$/, "");
+  return DEFAULT_BACKEND;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

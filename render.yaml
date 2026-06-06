@@ -70,11 +70,7 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free
     autoDeploy: true
-    envVars:
-      # Render injects the real API host automatically (no manual URL needed).
-      # The Next.js /api/v1 route handler proxies browser calls to this backend.
-      - key: BACKEND_URL
-        fromService:
-          type: web
-          name: jobpilot-api
-          property: host
+    # The Next.js /api/v1 route handler proxies browser calls to the backend; the
+    # backend's public URL is baked into the handler (DEFAULT_BACKEND), so no env
+    # var is needed. (Render's fromService 'host' returns a bare, non-resolvable
+    # hostname, so we don't use it.)
