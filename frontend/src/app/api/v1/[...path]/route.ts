@@ -9,9 +9,12 @@ import { NextRequest } from "next/server";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// Real backend on Render. Overridable via BACKEND_URL (e.g. http://api:8000 in
+// local docker-compose), but defaults to the deployed API so no env var is required.
+const DEFAULT_BACKEND = "https://jobpilot-api-gpc1.onrender.com";
+
 function backendBase(): string {
-  const b = process.env.BACKEND_URL || process.env.BACKEND_HOST || "";
-  if (!b) return "http://localhost:8000";
+  const b = process.env.BACKEND_URL || process.env.BACKEND_HOST || DEFAULT_BACKEND;
   return b.startsWith("http") ? b.replace(/\/+$/, "") : `https://${b}`;
 }
 
