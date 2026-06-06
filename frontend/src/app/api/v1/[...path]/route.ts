@@ -1,16 +1,12 @@
 // Same-origin API proxy. The browser calls /api/v1/* on THIS app's domain; this
 // route handler forwards the request to the real backend at RUNTIME. This removes
 // the need to bake a cross-origin API URL at build time and sidesteps CORS entirely.
-//
-// The backend address comes from BACKEND_URL (injected automatically by Render's
-// service linking — see render.yaml). Falls back to localhost for local dev.
 import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Real backend on Render. Overridable via BACKEND_URL (e.g. http://api:8000 in
-// local docker-compose), but defaults to the deployed API so no env var is required.
+// Real backend on Render. Overridable via BACKEND_URL (e.g. http://api:8000 locally).
 const DEFAULT_BACKEND = "https://jobpilot-api-gpc1.onrender.com";
 
 function backendBase(): string {
@@ -18,40 +14,57 @@ function backendBase(): string {
   return b.startsWith("http") ? b.replace(/\/+$/, "") : `https://${b}`;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function proxy(req: NextRequest, path: string[]): Promise<Response> {
-  const target = `${backendBase()}/api/v1/${path.join("/")}${req.nextUrl.search}`;
+  const base = backendBase();
+  const target = `${base}/api/v1/${path.join("/")}${req.nextUrl.search}`;
   const headers = new Headers(req.headers);
   headers.delete("host");
   headers.delete("connection");
   headers.delete("content-length");
+  headers.delete("accept-encoding"); // avoid upstream gzip we then re-emit incorrectly
 
   const init: RequestInit = { method: req.method, headers, redirect: "manual" };
   if (req.method !== "GET" && req.method !== "HEAD") {
-    init.body = Buffer.from(await req.arrayBuffer());
+    init.body = Buffer.from(await req.arrayBuffer()); // Buffer is reusable across retries
   }
 
-  let resp: Response;
-  try {
-    resp = await fetch(target, init);
-  } catch {
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: "upstream_unreachable",
-          message: "Backend is waking up or unreachable. Please retry in ~30s.",
-        },
-      }),
-      { status: 503, headers: { "content-type": "application/json" } },
-    );
+  // Retry to ride through backend cold-starts (503) and transient network errors.
+  let lastErr = "";
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    try {
+      const resp = await fetch(target, init);
+      if (resp.status === 503 || resp.status === 502) {
+        lastErr = `upstream ${resp.status}`;
+        await sleep(5000);
+        continue;
+      }
+      const body = await resp.arrayBuffer();
+      const out = new Headers();
+      for (const h of ["content-type", "content-disposition"]) {
+        const v = resp.headers.get(h);
+        if (v) out.set(h, v);
+      }
+      return new Response(body, { status: resp.status, headers: out });
+    } catch (e) {
+      lastErr = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+      await sleep(3000);
+    }
   }
 
-  const body = await resp.arrayBuffer();
-  const out = new Headers();
-  for (const h of ["content-type", "content-disposition"]) {
-    const v = resp.headers.get(h);
-    if (v) out.set(h, v);
-  }
-  return new Response(body, { status: resp.status, headers: out });
+  // All attempts failed — surface the real reason and the target for diagnosis.
+  return new Response(
+    JSON.stringify({
+      error: {
+        code: "upstream_unreachable",
+        message: "Backend unreachable after retries. Please retry in ~30s.",
+        detail: lastErr,
+        target,
+      },
+    }),
+    { status: 502, headers: { "content-type": "application/json" } },
+  );
 }
 
 type Ctx = { params: Promise<{ path: string[] }> };
